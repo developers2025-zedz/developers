@@ -1,0 +1,12 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: deploy/local/Dockerfile
+    volumes:
+      - ./app:/app/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    restart: unless-stopped
