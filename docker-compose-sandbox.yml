@@ -2,7 +2,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: deploy/local/Dockerfile
+      dockerfile: deploy/sandbox/Dockerfile
     volumes:
       - ./app:/app/app
     ports:
