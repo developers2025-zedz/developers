@@ -1,0 +1,42 @@
+name: Deploy by Branch
+
+on:
+  push:
+    branches: [ main, master, dev ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set deployment environment variable
+        run: |
+          if [[ "${GITHUB_REF##*/}" == "dev" ]]; then
+            echo "COMPOSE_OVERRIDE=docker-compose-sandbox.yml" >> $GITHUB_ENV
+          else
+            echo "COMPOSE_OVERRIDE=docker-compose-prod.yml" >> $GITHUB_ENV
+          fi
+
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: "."
+          target: "~/developers"
+
+      - name: Deploy with Docker Compose (by branch)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            cd ~/developers
+            docker compose -f docker-compose.yml -f $COMPOSE_OVERRIDE down
+            docker compose -f docker-compose.yml -f $COMPOSE_OVERRIDE up -d --build
