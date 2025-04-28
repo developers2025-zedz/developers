@@ -1,0 +1,49 @@
+stages:
+  - test
+  - deploy
+
+test:
+  stage: test
+  image: python:3.12
+  script:
+    - pip install poetry
+    - poetry install
+    - poetry run pytest
+
+deploy_sandbox:
+  stage: deploy
+  only:
+    - dev
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh
+  script:
+    - |
+      scp -r . $SSH_USER@$SERVER_IP:~/developers
+      ssh $SSH_USER@$SERVER_IP "
+        cd ~/developers &&
+        docker compose -f docker-compose.yml -f docker-compose-sandbox.yml down &&
+        docker compose -f docker-compose.yml -f docker-compose-sandbox.yml up -d --build
+      "
+  variables:
+    GIT_STRATEGY: clone
+
+deploy_prod:
+  stage: deploy
+  only:
+    - main
+    - master
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh
+  script:
+    - |
+      scp -r . $SSH_USER@$SERVER_IP:~/developers
+      ssh $SSH_USER@$SERVER_IP "
+        cd ~/developers &&
+        docker compose -f docker-compose.yml -f docker-compose-prod.yml down &&
+        docker compose -f docker-compose.yml -f docker-compose-prod.yml up -d --build
+      "
+  variables:
+    GIT_STRATEGY: clone
+
