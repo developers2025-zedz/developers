@@ -5,19 +5,26 @@ on:
     branches: [ main, master, dev ]
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Poetry
+        run: pip install poetry
+      - name: Install dependencies
+        run: poetry install
+      - name: Run tests
+        run: poetry run pytest
+
   deploy:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set deployment environment variable
-        run: |
-          if [[ "${GITHUB_REF##*/}" == "dev" ]]; then
-            echo "COMPOSE_OVERRIDE=docker-compose-sandbox.yml" >> $GITHUB_ENV
-          else
-            echo "COMPOSE_OVERRIDE=docker-compose-prod.yml" >> $GITHUB_ENV
-          fi
 
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
@@ -38,5 +45,11 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: |
             cd ~/developers
+            if [[ "${GITHUB_REF##*/}" == "dev" ]]; then
+            echo "COMPOSE_OVERRIDE=docker-compose-sandbox.yml" >> $GITHUB_ENV
+            else
+              echo "COMPOSE_OVERRIDE=docker-compose-prod.yml" >> $GITHUB_ENV
+            fi
+            printenv
             docker compose -f docker-compose.yml -f $COMPOSE_OVERRIDE down
-            docker compose -f docker-compose.yml -f $COMPOSE_OVERRIDE up -d --build
+            docker compose -f docker-compose.yml -f $COMPOSE_OVERRIDE up --build -d 
